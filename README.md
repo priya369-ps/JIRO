@@ -44,3 +44,17 @@ unsafe filenames, and unsupported file types are rejected.
 
 The API endpoints are `POST /ingest/text` and `POST /ingest/file`. The file
 endpoint extracts PDF and DOCX content using `pdfplumber` and `python-docx`.
+
+## Chunk 04 Implementation
+
+The output boundary is exposed through `POST /tailor`. It returns a structured
+tailoring result containing the source-preserving tailored resume, extracted job
+requirements, matched requirements, gaps, validation status and warnings, a
+machine-readable unified diff with a human-readable summary, and export
+metadata.
+
+Markdown export is available in this milestone. DOCX and PDF are returned as
+explicitly unavailable rather than silently producing incomplete files; their
+renderers belong to later export milestones. The current deterministic output
+service does not invent a rewrite, so the tailored resume remains the
+normalized source resume until the model and rewrite stages are implemented.

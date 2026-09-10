@@ -1,0 +1,62 @@
+import unittest
+
+from fastapi.testclient import TestClient
+
+from app.main import app
+from app.outputs import build_tailoring_result
+
+
+class TailoringOutputTests(unittest.TestCase):
+    def test_result_contains_outputs_without_changing_source_facts(self) -> None:
+        result = build_tailoring_result(
+            "Alex Developer\nPython and FastAPI experience.",
+            "Build APIs with Python and Kubernetes.",
+        )
+
+        self.assertEqual(result.tailored_resume, "Alex Developer\nPython and FastAPI experience.")
+        self.assertEqual([item.value for item in result.matches], ["Python"])
+        self.assertEqual([item.value for item in result.gaps], ["Build", "APIs", "Kubernetes"])
+        self.assertFalse(result.diff.changed)
+        self.assertIn("No source text was changed.", result.diff.summary)
+        self.assertEqual(result.validation.status, "passed")
+        self.assertFalse(result.validation.export_blocked)
+        self.assertTrue(result.exports[0].available)
+        self.assertEqual(result.exports[0].format, "markdown")
+        self.assertFalse(result.exports[1].available)
+        self.assertFalse(result.exports[2].available)
+
+    def test_tailor_endpoint_returns_serializable_output_contract(self) -> None:
+        with TestClient(app) as client:
+            response = client.post(
+                "/tailor",
+                json={
+                    "resume": "Name\nPython developer",
+                    "job_description": "Python and Docker",
+                },
+            )
+
+        self.assertEqual(response.status_code, 200)
+        body = response.json()
+        self.assertEqual(body["tailored_resume"], "Name\nPython developer")
+        self.assertIn("job_requirements", body)
+        self.assertIn("matches", body)
+        self.assertIn("gaps", body)
+        self.assertIn("validation", body)
+        self.assertIn("diff", body)
+        self.assertIn("exports", body)
+        self.assertEqual(body["validation"]["status"], "passed")
+        self.assertTrue(body["exports"][0]["available"])
+
+    def test_tailor_endpoint_rejects_empty_source_input(self) -> None:
+        with TestClient(app) as client:
+            response = client.post(
+                "/tailor",
+                json={"resume": "", "job_description": "Python"},
+            )
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("cannot be empty", response.json()["detail"])
+
+
+if __name__ == "__main__":
+    unittest.main()

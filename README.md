@@ -109,3 +109,18 @@ and finish status without exposing API keys.
 The contract validates provider names, model names, prompts, and token counts.
 Provider implementations are intentionally deferred to Chunk 9; tests use a
 fake provider and never require live credentials.
+
+## Chunk 09 Implementation
+
+Provider adapters now live behind the same `ModelProvider` contract in
+[app/model_provider.py](app/model_provider.py). The default `GroqProvider`
+uses `GROQ_API_KEY` from server-side environment configuration, defaults to
+`openai/gpt-oss-120b`, and applies a bounded per-session rate limit. It never
+falls back silently when configuration or the provider request fails.
+
+`BYOKProvider` accepts a per-request key and supports Groq, OpenAI, and
+Anthropic upstream configuration without persisting or exposing the key.
+`LocalProvider` defaults to an Ollama-compatible local endpoint and does not
+use the shared Groq key or fall back to another provider. Provider failures are
+returned as safe configuration or request errors, while tests use an injected
+transport and do not make live network calls.

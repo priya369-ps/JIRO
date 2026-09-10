@@ -58,3 +58,12 @@ explicitly unavailable rather than silently producing incomplete files; their
 renderers belong to later export milestones. The current deterministic output
 service does not invent a rewrite, so the tailored resume remains the
 normalized source resume until the model and rewrite stages are implemented.
+
+## Chunk 05 Implementation
+
+The tailoring result reports ATS risks detected in text input, including
+tab-separated columns, table-like content, and image markers. Source-supported
+job terms remain matches, unsupported terms remain gaps, and the deterministic
+MVP never inserts missing keywords or rewrites unsupported facts. A model-backed
+rewrite stage can later tailor supported summary, experience, and skills text
+behind the same result contract.

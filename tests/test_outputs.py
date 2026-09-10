@@ -57,6 +57,22 @@ class TailoringOutputTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("cannot be empty", response.json()["detail"])
 
+    def test_ats_risks_are_reported_without_changing_source(self) -> None:
+        resume = "Name\nPython\tFastAPI\n| Skills | Python |\n[image]"
+
+        result = build_tailoring_result(resume, "Python and FastAPI")
+
+        self.assertEqual(result.tailored_resume, resume)
+        self.assertEqual(
+            result.validation.ats_risks,
+            (
+                "tab-separated columns may be difficult for ATS parsers to read",
+                "table-like content may be difficult for ATS parsers to read",
+                "images may be ignored by ATS parsers",
+            ),
+        )
+        self.assertTrue(all("ATS risk:" in warning for warning in result.validation.warnings[1:]))
+
 
 if __name__ == "__main__":
     unittest.main()

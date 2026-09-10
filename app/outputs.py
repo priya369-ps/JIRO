@@ -44,6 +44,7 @@ class ValidationResult:
     status: str
     warnings: tuple[str, ...]
     export_blocked: bool
+    ats_risks: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -82,6 +83,19 @@ class TailoringResult:
         return asdict(self)
 
 
+def _detect_ats_risks(resume: str) -> tuple[str, ...]:
+    """Detect document structures that are unsafe for plain-text ATS parsing."""
+    risks: list[str] = []
+    lines = resume.splitlines()
+    if any("\t" in line for line in lines):
+        risks.append("tab-separated columns may be difficult for ATS parsers to read")
+    if any(line.count("|") >= 2 for line in lines):
+        risks.append("table-like content may be difficult for ATS parsers to read")
+    if re.search(r"!\[[^\]]*\]\([^)]*\)|\[(?:image|photo|logo)\]", resume, re.IGNORECASE):
+        risks.append("images may be ignored by ATS parsers")
+    return tuple(risks)
+
+
 def build_tailoring_result(resume: str, job_description: str) -> TailoringResult:
     """Build a safe source-preserving result without inventing candidate facts."""
     requirements = _extract_requirements(job_description)
@@ -107,12 +121,16 @@ def build_tailoring_result(resume: str, job_description: str) -> TailoringResult
     )
 
     tailored_resume = resume.strip()
+    ats_risks = _detect_ats_risks(resume)
+    warnings = [
+        "No model rewrite was applied; the tailored resume preserves the source resume exactly."
+    ]
+    warnings.extend(f"ATS risk: {risk}." for risk in ats_risks)
     validation = ValidationResult(
         status="passed",
-        warnings=(
-            "No model rewrite was applied; the tailored resume preserves the source resume exactly."
-        ,),
+        warnings=tuple(warnings),
         export_blocked=False,
+        ats_risks=ats_risks,
     )
     diff = _build_diff(resume, tailored_resume)
     exports = (

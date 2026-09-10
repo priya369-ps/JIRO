@@ -1,6 +1,7 @@
 import unittest
 
 from app.architecture import ModelResponse
+from app.outputs import ExportResult, Requirement, ValidationResult
 from app.pipeline import DefaultInputParser, DeterministicTailoringPipeline, build_default_pipeline
 
 
@@ -36,6 +37,52 @@ class ArchitectureTests(unittest.TestCase):
         self.assertEqual(response.model, "llama3.2")
         self.assertEqual(response.finish_status, "stop")
         self.assertIsNone(response.request_id)
+
+    def test_pipeline_runs_injectable_processing_stages_in_order(self) -> None:
+        calls: list[str] = []
+
+        class Analyzer:
+            def analyze(self, job_description: str):
+                calls.append("analyze")
+                return (Requirement("Python", "keyword", "unmatched"),)
+
+        class Matcher:
+            def match(self, resume: str, requirements):
+                calls.append("match")
+                return requirements, ()
+
+        class Rewriter:
+            def rewrite(self, resume: str, job_description: str) -> str:
+                calls.append("rewrite")
+                return resume + "\nTailored"
+
+        class Validator:
+            def validate(self, original_resume: str, tailored_resume: str):
+                calls.append("validate")
+                return ValidationResult("passed", (), False)
+
+        class Formatter:
+            def format(self, resume: str) -> str:
+                calls.append("format")
+                return resume + "\nFormatted"
+
+        class Exporter:
+            def export(self, resume: str):
+                calls.append("export")
+                return (ExportResult("markdown", True, resume, None),)
+
+        result = DeterministicTailoringPipeline(
+            analyzer=Analyzer(),
+            matcher=Matcher(),
+            rewriter=Rewriter(),
+            validator=Validator(),
+            formatter=Formatter(),
+            exporter=Exporter(),
+        ).run("Source", "Job")
+
+        self.assertEqual(calls, ["analyze", "match", "rewrite", "format", "validate", "export"])
+        self.assertEqual(result.tailored_resume, "Source\nTailored\nFormatted")
+        self.assertEqual(result.exports[0].content, result.tailored_resume)
 
 
 if __name__ == "__main__":

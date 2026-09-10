@@ -138,3 +138,12 @@ flags unsupported dates, metrics, companies, titles, known technical skills,
 and responsibility statements. Failed validation is marked untrusted and blocks
 export through `ValidationResult.export_blocked`; warnings remain attached for
 review. Tests use deterministic text and do not require a model call.
+
+## Chunk 11 Implementation
+
+The processing pipeline is composed of explicit, injectable stages: input
+parsing, job-description analysis, resume matching, rewriting, claim
+validation, formatting, and export. The current defaults are deterministic and
+source-preserving, while tests can replace any stage with a fake implementation
+without making a model call. Validation runs before export, and failed
+validation blocks export results while retaining the warnings.

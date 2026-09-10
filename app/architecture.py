@@ -60,6 +60,13 @@ class ClaimValidator(Protocol):
         ...
 
 
+class ResumeFormatter(Protocol):
+    """Create the ATS-compatible internal document before export rendering."""
+
+    def format(self, resume: str) -> str:
+        ...
+
+
 class ExportRenderer(Protocol):
     """Render validated output into an explicitly named export format."""
 

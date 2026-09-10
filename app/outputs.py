@@ -98,39 +98,16 @@ def _detect_ats_risks(resume: str) -> tuple[str, ...]:
 
 def build_tailoring_result(resume: str, job_description: str) -> TailoringResult:
     """Build a safe source-preserving result without inventing candidate facts."""
-    requirements = _extract_requirements(job_description)
-    resume_lower = resume.casefold()
-    matches = tuple(
-        requirement
-        for requirement in requirements
-        if requirement.value.casefold() in resume_lower
-    )
-    matched_values = {requirement.value for requirement in matches}
-    gaps = tuple(
-        requirement
-        for requirement in requirements
-        if requirement.value not in matched_values
-    )
-    matches = tuple(
-        Requirement(item.value, item.category, "matched", f"Found in source resume: {item.value}")
-        for item in matches
-    )
-    gaps = tuple(
-        Requirement(item.value, item.category, "gap", None)
-        for item in gaps
-    )
+    requirements = extract_requirements(job_description)
+    matches, gaps = match_requirements(resume, requirements)
 
     tailored_resume = resume.strip()
-    ats_risks = _detect_ats_risks(resume)
+    ats_risks = detect_ats_risks(resume)
     from app.safety import validate_claims
 
     validation = validate_claims(resume, tailored_resume, ats_risks=ats_risks)
-    diff = _build_diff(resume, tailored_resume)
-    exports = (
-        ExportResult("markdown", True, _markdown_export(tailored_resume), None),
-        ExportResult("docx", False, None, "DOCX export is planned for a later milestone."),
-        ExportResult("pdf", False, None, "PDF export is planned for a later milestone."),
-    )
+    diff = build_diff(resume, tailored_resume)
+    exports = render_exports(tailored_resume)
     return TailoringResult(
         tailored_resume=tailored_resume,
         job_requirements=requirements,
@@ -139,6 +116,50 @@ def build_tailoring_result(resume: str, job_description: str) -> TailoringResult
         validation=validation,
         diff=diff,
         exports=exports,
+    )
+
+
+def extract_requirements(job_description: str) -> tuple[Requirement, ...]:
+    """Analyze a job description into deterministic, deduplicated requirements."""
+    return _extract_requirements(job_description)
+
+
+def match_requirements(
+    resume: str,
+    requirements: tuple[Requirement, ...],
+) -> tuple[tuple[Requirement, ...], tuple[Requirement, ...]]:
+    """Match requirements against resume text without changing either input."""
+    resume_lower = resume.casefold()
+    matches = tuple(
+        Requirement(item.value, item.category, "matched", f"Found in source resume: {item.value}")
+        for item in requirements
+        if item.value.casefold() in resume_lower
+    )
+    matched_values = {requirement.value.casefold() for requirement in matches}
+    gaps = tuple(
+        Requirement(item.value, item.category, "gap", None)
+        for item in requirements
+        if item.value.casefold() not in matched_values
+    )
+    return matches, gaps
+
+
+def detect_ats_risks(resume: str) -> tuple[str, ...]:
+    """Analyze resume text for structures that can reduce ATS readability."""
+    return _detect_ats_risks(resume)
+
+
+def build_diff(original: str, tailored: str) -> DiffResult:
+    """Create the machine-readable and human-readable comparison result."""
+    return _build_diff(original, tailored)
+
+
+def render_exports(resume: str) -> tuple[ExportResult, ...]:
+    """Render supported output formats and report deferred formats explicitly."""
+    return (
+        ExportResult("markdown", True, _markdown_export(resume), None),
+        ExportResult("docx", False, None, "DOCX export is planned for a later milestone."),
+        ExportResult("pdf", False, None, "PDF export is planned for a later milestone."),
     )
 
 

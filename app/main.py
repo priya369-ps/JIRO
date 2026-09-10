@@ -1,6 +1,11 @@
-"""Minimal JIRO service foundation for the mission milestone."""
+"""JIRO API and input ingestion endpoints."""
 
-from fastapi import FastAPI
+from typing import Literal
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from pydantic import BaseModel
+
+from app.ingest import IngestionError, ingest_file, ingest_text
 
 
 PRODUCT_NAME = "JIRO"
@@ -17,6 +22,15 @@ PIPELINE_STAGES = (
 app = FastAPI(title=PRODUCT_NAME, version="0.1.0")
 
 
+class TextInput(BaseModel):
+    """Pasted resume or job-description input."""
+
+    text: str
+    source_name: str = "pasted-text"
+    provider: Literal["groq", "byok", "local"] = "groq"
+    model: str | None = None
+
+
 @app.get("/health")
 def health_check() -> dict[str, object]:
     """Return service status and the product contract's initial pipeline."""
@@ -26,4 +40,44 @@ def health_check() -> dict[str, object]:
         "mission": MISSION,
         "pipeline": list(PIPELINE_STAGES),
         "fabrication_policy": "never_invent_source_facts",
+    }
+
+
+@app.post("/ingest/text")
+def ingest_text_input(input_data: TextInput) -> dict[str, str]:
+    try:
+        document = ingest_text(input_data.text, source_name=input_data.source_name)
+    except IngestionError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {
+        "source_name": document.source_name,
+        "source_type": document.source_type,
+        "original_text": document.original_text,
+        "normalized_text": document.normalized_text,
+        "provider": input_data.provider,
+        "model": input_data.model or "",
+    }
+
+
+@app.post("/ingest/file")
+async def ingest_file_input(
+    file: UploadFile = File(...),
+    provider: Literal["groq", "byok", "local"] = Form("groq"),
+    model: str | None = Form(None),
+) -> dict[str, str]:
+    try:
+        document = ingest_file(
+            file.filename or "",
+            await file.read(),
+            content_type=file.content_type,
+        )
+    except IngestionError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+    return {
+        "source_name": document.source_name,
+        "source_type": document.source_type,
+        "original_text": document.original_text,
+        "normalized_text": document.normalized_text,
+        "provider": provider,
+        "model": model or "",
     }

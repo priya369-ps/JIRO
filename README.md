@@ -34,3 +34,13 @@ This chunk does not add runtime product behavior. Its implementation is the
 canonical repository-level guide and its required decision rules. Later chunks
 must preserve those rules rather than reimplementing them in individual
 features.
+
+## Chunk 03 Implementation
+
+The input boundary accepts pasted text and PDF, DOCX, or UTF-8 TXT files. Each
+input is converted to an `IngestedDocument` containing both the original text
+and a normalized text representation. Inputs larger than 5 MB, empty inputs,
+unsafe filenames, and unsupported file types are rejected.
+
+The API endpoints are `POST /ingest/text` and `POST /ingest/file`. The file
+endpoint extracts PDF and DOCX content using `pdfplumber` and `python-docx`.

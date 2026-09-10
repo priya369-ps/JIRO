@@ -6,6 +6,8 @@ from typing import Final
 import io
 import re
 
+from app.privacy import PrivacyError, ensure_text_input, sanitize_filename
+
 
 MAX_INPUT_BYTES: Final = 5 * 1024 * 1024
 SUPPORTED_EXTENSIONS: Final = frozenset({".docx", ".pdf", ".txt"})
@@ -27,12 +29,13 @@ class IngestedDocument:
 
 def ingest_text(text: str, *, source_name: str = "pasted-text") -> IngestedDocument:
     """Ingest pasted text while retaining the exact source separately."""
-    if not isinstance(text, str):
-        raise IngestionError("Text input must be a string.")
-    if not text.strip():
-        raise IngestionError("Text input cannot be empty.")
+    try:
+        ensure_text_input(text, label="Text input")
+        safe_source_name = sanitize_filename(source_name)
+    except PrivacyError as error:
+        raise IngestionError(str(error)) from error
 
-    return _document(source_name, "text", text)
+    return _document(safe_source_name, "text", text)
 
 
 def ingest_file(
@@ -42,8 +45,10 @@ def ingest_file(
     content_type: str | None = None,
 ) -> IngestedDocument:
     """Extract supported file content into the common document representation."""
-    if not filename or PurePath(filename).name != filename:
-        raise IngestionError("Filename must be a non-empty file name without a path.")
+    try:
+        filename = sanitize_filename(filename)
+    except PrivacyError as error:
+        raise IngestionError(str(error)) from error
     if not isinstance(content, bytes):
         raise IngestionError("File content must be bytes.")
     if not content:

@@ -159,7 +159,12 @@ class OpenAICompatibleProvider:
             "messages": [{"role": "user", "content": prompt}],
             **remove_sensitive_keys(config.options),
         }
-        response = self._transport(endpoint, payload, headers)
+        try:
+            response = self._transport(endpoint, payload, headers)
+        except ProviderRequestError:
+            raise
+        except (TimeoutError, OSError, ValueError) as error:
+            raise ProviderRequestError("Model provider request failed.") from error
         return _response_from_payload(self.provider, config.model, response)
 
     def _endpoint(self, config: ModelConfig) -> str:

@@ -11,6 +11,38 @@ The first implementation slice establishes the JIRO mission contract as a minima
 
 Run the service with:
 
+
+## Chunk 15 Implementation
+
+The implementation order is now executable through [app/config.py](app/config.py)
+and the existing FastAPI health check. Runtime configuration is loaded from
+environment variables without reading API keys into the settings object:
+
+- `JIRO_DEFAULT_PROVIDER` defaults to `groq`.
+- `JIRO_GROQ_MODEL` defaults to `openai/gpt-oss-120b`.
+- `JIRO_OLLAMA_ENDPOINT` defaults to `http://localhost:11434`.
+- `JIRO_PROVIDER_TIMEOUT_SECONDS` is validated and capped at 120 seconds.
+
+The service exposes only non-secret configuration metadata from `/health`. The
+repository uses the text-first FastAPI MVP, direct provider adapters, and the
+existing deterministic pipeline before adding history, authentication, or
+deferred exporters.
+
+## Chunk 16 Implementation
+
+The acceptance matrix is covered by the repository test suite and
+[tests/test_acceptance.py](tests/test_acceptance.py). It verifies malformed and
+oversized files, empty and unsupported inputs, provider timeouts, invalid
+configuration, unsupported claims, export blocking, rate limits, provider
+fakes, secret-free metadata, parsing, matching, prompt safety, and export
+behavior. Tests inject transports and pipeline stages, so they never require
+live credentials or network access.
+
+Run the complete deterministic gate with:
+
+```bash
+python -m unittest discover -s tests -v
+```
 ```bash
 uvicorn app.main:app --reload
 ```

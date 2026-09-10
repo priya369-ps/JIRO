@@ -6,6 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.config import load_settings
 from app.ingest import IngestionError
 from app.pipeline import DefaultInputParser, build_default_pipeline
 from app.reliability import RequestSizeLimitMiddleware, cors_origins
@@ -32,6 +33,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+settings = load_settings()
 input_parser = DefaultInputParser()
 tailoring_pipeline = build_default_pipeline()
 
@@ -62,6 +64,7 @@ def health_check() -> dict[str, object]:
         "mission": MISSION,
         "pipeline": list(PIPELINE_STAGES),
         "fabrication_policy": "never_invent_source_facts",
+        "configuration": settings.public_metadata(),
     }
 
 

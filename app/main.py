@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 
 from app.config import load_settings
+from app.auth import AuthenticationMiddleware
 from app.errors import public_error
 from app.ingest import IngestionError
 from app.model_provider import ModelProviderError, ProviderRateLimitError
@@ -31,6 +32,7 @@ PIPELINE_STAGES = (
 )
 
 app = FastAPI(title=PRODUCT_NAME, version="0.1.0")
+app.add_middleware(AuthenticationMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(

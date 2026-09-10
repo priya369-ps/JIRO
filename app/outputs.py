@@ -122,16 +122,9 @@ def build_tailoring_result(resume: str, job_description: str) -> TailoringResult
 
     tailored_resume = resume.strip()
     ats_risks = _detect_ats_risks(resume)
-    warnings = [
-        "No model rewrite was applied; the tailored resume preserves the source resume exactly."
-    ]
-    warnings.extend(f"ATS risk: {risk}." for risk in ats_risks)
-    validation = ValidationResult(
-        status="passed",
-        warnings=tuple(warnings),
-        export_blocked=False,
-        ats_risks=ats_risks,
-    )
+    from app.safety import validate_claims
+
+    validation = validate_claims(resume, tailored_resume, ats_risks=ats_risks)
     diff = _build_diff(resume, tailored_resume)
     exports = (
         ExportResult("markdown", True, _markdown_export(tailored_resume), None),

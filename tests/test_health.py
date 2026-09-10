@@ -12,6 +12,7 @@ class HealthCheckTests(unittest.TestCase):
         self.assertEqual(response["mission"], MISSION)
         self.assertEqual(response["pipeline"], list(PIPELINE_STAGES))
         self.assertEqual(response["fabrication_policy"], "never_invent_source_facts")
+        self.assertEqual(response["configuration"]["product_decisions"]["frontend"], "fastapi_text_first_nextjs_future")
 
 
 if __name__ == "__main__":

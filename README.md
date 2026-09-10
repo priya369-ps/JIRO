@@ -232,3 +232,19 @@ Input and tailoring responses expose workflow metadata for frontend states:
 and an explicit `ephemeral` privacy mode. No workflow history or resume content
 is persisted; processing state can be represented by the frontend while a
 request is in flight, and blocked exports remain visible in the review state.
+
+## Chunk 19 Implementation
+
+Current product decisions are explicit in [app/decisions.py](app/decisions.py)
+and exposed as non-secret health metadata. JIRO uses one ephemeral resume
+profile, section-and-line diffs, bounded per-session shared-key rate limiting,
+FastAPI text-first operation with Next.js deferred, and Markdown export now with
+DOCX/PDF deferred. These choices are configuration-level decisions and do not
+add persistence, authentication, or a second frontend.
+
+## Chunk 20 Implementation
+
+Conflict resolution is encoded by `resolve_conflict`: preserve user data,
+provider isolation, and the no-fabrication guarantee first; then make the
+smallest affected change and add a regression test. The priorities are
+read-only metadata and are covered by deterministic tests.

@@ -4,6 +4,8 @@ from dataclasses import dataclass
 import os
 from typing import Final, Literal
 
+from app.decisions import ProductDecisions
+
 
 ConfigurationProvider = Literal["groq", "byok", "local"]
 DEFAULT_GROQ_MODEL: Final = "openai/gpt-oss-120b"
@@ -36,6 +38,7 @@ class Settings:
             "ollama_endpoint": self.ollama_endpoint,
             "provider_timeout_seconds": self.provider_timeout_seconds,
             "privacy_mode": "ephemeral",
+            "product_decisions": ProductDecisions().as_dict(),
         }
 
 

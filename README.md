@@ -67,3 +67,17 @@ job terms remain matches, unsupported terms remain gaps, and the deterministic
 MVP never inserts missing keywords or rewrites unsupported facts. A model-backed
 rewrite stage can later tailor supported summary, experience, and skills text
 behind the same result contract.
+
+## Chunk 06 Implementation
+
+The application now follows explicit architecture boundaries in
+[app/architecture.py](app/architecture.py). The contracts separate input
+parsing, job analysis, resume matching, rewriting, claim validation, export
+rendering, model access, and pipeline orchestration.
+
+[app/pipeline.py](app/pipeline.py) owns the current dependency wiring. The
+FastAPI layer delegates ingestion to `DefaultInputParser` and tailoring to
+`DeterministicTailoringPipeline`; it does not contain provider-specific logic
+or pipeline implementation details. The deterministic pipeline preserves the
+current no-fabrication behavior while leaving model-provider implementations
+for later chunks.

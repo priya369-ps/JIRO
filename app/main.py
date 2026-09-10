@@ -5,8 +5,8 @@ from typing import Literal
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
-from app.ingest import IngestionError, ingest_file, ingest_text
-from app.outputs import build_tailoring_result
+from app.ingest import IngestionError
+from app.pipeline import DefaultInputParser, build_default_pipeline
 
 
 PRODUCT_NAME = "JIRO"
@@ -21,6 +21,8 @@ PIPELINE_STAGES = (
 )
 
 app = FastAPI(title=PRODUCT_NAME, version="0.1.0")
+input_parser = DefaultInputParser()
+tailoring_pipeline = build_default_pipeline()
 
 
 class TextInput(BaseModel):
@@ -54,7 +56,10 @@ def health_check() -> dict[str, object]:
 @app.post("/ingest/text")
 def ingest_text_input(input_data: TextInput) -> dict[str, str]:
     try:
-        document = ingest_text(input_data.text, source_name=input_data.source_name)
+        document = input_parser.parse_text(
+            input_data.text,
+            source_name=input_data.source_name,
+        )
     except IngestionError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
     return {
@@ -74,7 +79,7 @@ async def ingest_file_input(
     model: str | None = Form(None),
 ) -> dict[str, str]:
     try:
-        document = ingest_file(
+        document = input_parser.parse_file(
             file.filename or "",
             await file.read(),
             content_type=file.content_type,
@@ -95,12 +100,15 @@ async def ingest_file_input(
 def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
     """Return all Chunk 4 outputs while preserving the source resume."""
     try:
-        resume = ingest_text(input_data.resume, source_name="resume").normalized_text
-        job_description = ingest_text(
+        resume = input_parser.parse_text(
+            input_data.resume,
+            source_name="resume",
+        ).normalized_text
+        job_description = input_parser.parse_text(
             input_data.job_description,
             source_name="job-description",
         ).normalized_text
     except IngestionError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    return build_tailoring_result(resume, job_description).as_dict()
+    return tailoring_pipeline.run(resume, job_description).as_dict()

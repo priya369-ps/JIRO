@@ -6,6 +6,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.ingest import IngestionError, ingest_file, ingest_text
+from app.outputs import build_tailoring_result
 
 
 PRODUCT_NAME = "JIRO"
@@ -29,6 +30,13 @@ class TextInput(BaseModel):
     source_name: str = "pasted-text"
     provider: Literal["groq", "byok", "local"] = "groq"
     model: str | None = None
+
+
+class TailoringInput(BaseModel):
+    """Source inputs for the structured tailoring output contract."""
+
+    resume: str
+    job_description: str
 
 
 @app.get("/health")
@@ -81,3 +89,18 @@ async def ingest_file_input(
         "provider": provider,
         "model": model or "",
     }
+
+
+@app.post("/tailor")
+def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
+    """Return all Chunk 4 outputs while preserving the source resume."""
+    try:
+        resume = ingest_text(input_data.resume, source_name="resume").normalized_text
+        job_description = ingest_text(
+            input_data.job_description,
+            source_name="job-description",
+        ).normalized_text
+    except IngestionError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    return build_tailoring_result(resume, job_description).as_dict()

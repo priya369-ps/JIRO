@@ -22,3 +22,15 @@ Run the focused test without extra tooling:
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Chunk 02 Implementation
+
+Chunk 2 establishes the operating contract for AI coding agents. Before changing
+the application, agents must read [AGENTS.md](AGENTS.md) and follow its rules for
+scope, module boundaries, privacy, secrets, failure handling, testing, and
+validation.
+
+This chunk does not add runtime product behavior. Its implementation is the
+canonical repository-level guide and its required decision rules. Later chunks
+must preserve those rules rather than reimplementing them in individual
+features.

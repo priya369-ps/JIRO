@@ -3,10 +3,13 @@
 from typing import Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from app.ingest import IngestionError
 from app.pipeline import DefaultInputParser, build_default_pipeline
+from app.reliability import RequestSizeLimitMiddleware, cors_origins
+from app.workflow import input_workflow_state, review_workflow_state
 
 
 PRODUCT_NAME = "JIRO"
@@ -21,6 +24,14 @@ PIPELINE_STAGES = (
 )
 
 app = FastAPI(title=PRODUCT_NAME, version="0.1.0")
+app.add_middleware(RequestSizeLimitMiddleware)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=cors_origins(),
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
+)
 input_parser = DefaultInputParser()
 tailoring_pipeline = build_default_pipeline()
 
@@ -32,6 +43,7 @@ class TextInput(BaseModel):
     source_name: str = "pasted-text"
     provider: Literal["groq", "byok", "local"] = "groq"
     model: str | None = None
+    privacy_mode: Literal["ephemeral"] = "ephemeral"
 
 
 class TailoringInput(BaseModel):
@@ -54,7 +66,7 @@ def health_check() -> dict[str, object]:
 
 
 @app.post("/ingest/text")
-def ingest_text_input(input_data: TextInput) -> dict[str, str]:
+def ingest_text_input(input_data: TextInput) -> dict[str, object]:
     try:
         document = input_parser.parse_text(
             input_data.text,
@@ -69,6 +81,7 @@ def ingest_text_input(input_data: TextInput) -> dict[str, str]:
         "normalized_text": document.normalized_text,
         "provider": input_data.provider,
         "model": input_data.model or "",
+        "workflow": input_workflow_state(),
     }
 
 
@@ -77,11 +90,11 @@ async def ingest_file_input(
     file: UploadFile = File(...),
     provider: Literal["groq", "byok", "local"] = Form("groq"),
     model: str | None = Form(None),
-) -> dict[str, str]:
+) -> dict[str, object]:
     try:
         document = input_parser.parse_file(
             file.filename or "",
-            await file.read(),
+            await file.read(5 * 1024 * 1024 + 1),
             content_type=file.content_type,
         )
     except IngestionError as error:
@@ -93,6 +106,7 @@ async def ingest_file_input(
         "normalized_text": document.normalized_text,
         "provider": provider,
         "model": model or "",
+        "workflow": input_workflow_state(),
     }
 
 
@@ -111,4 +125,7 @@ def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
     except IngestionError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    return tailoring_pipeline.run(resume, job_description).as_dict()
+    result = tailoring_pipeline.run(resume, job_description)
+    response = result.as_dict()
+    response["workflow"] = review_workflow_state(result)
+    return response

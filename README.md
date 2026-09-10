@@ -161,3 +161,19 @@ payloads. Diagnostic mappings can be redacted, API keys remain excluded from
 response metadata, and parser/provider errors contain safe messages without
 echoing resume, job-description, file, or credential content. Extracted text
 and model output continue to be treated as untrusted input for later stages.
+
+## Chunk 13 Implementation
+
+The API applies an explicit request-body limit, restrictive CORS defaults, and
+bounded timeout validation. Uploaded content is read with a one-byte overflow
+allowance so oversized files are rejected without unbounded buffering. The
+provider layer continues to use bounded per-session rate limiting and safe
+provider errors without logging source text or secrets.
+
+## Chunk 14 Implementation
+
+Input and tailoring responses expose workflow metadata for frontend states:
+`input` and `review`, with validation status, warnings, export availability,
+and an explicit `ephemeral` privacy mode. No workflow history or resume content
+is persisted; processing state can be represented by the frontend while a
+request is in flight, and blocked exports remain visible in the review state.

@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from fastapi.responses import JSONResponse
 
 from app.config import load_settings
+from app.decisions import ProductDecisions
 from app.auth import AuthenticationMiddleware
 from app.errors import public_error
 from app.ingest import IngestionError
@@ -96,6 +97,17 @@ def health_check() -> dict[str, object]:
         "pipeline": list(PIPELINE_STAGES),
         "fabrication_policy": "never_invent_source_facts",
         "configuration": settings.public_metadata(),
+    }
+
+
+@app.get("/ready")
+def readiness_check() -> dict[str, object]:
+    """Report readiness without contacting external model providers."""
+    return {
+        "status": "ready",
+        "service": PRODUCT_NAME,
+        "checks": {"configuration": "loaded", "provider": "deferred_until_request"},
+        "configuration": {"product_decisions": ProductDecisions().as_dict()},
     }
 
 

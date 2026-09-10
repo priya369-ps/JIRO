@@ -279,3 +279,417 @@ When implementing these areas, make the choice explicit and keep it reversible:
 ## Chunk 20: Conflict Resolution
 
 When a future agent encounters a conflict between this guide and existing code, preserve user data, provider isolation, and no-fabrication behavior first. Then update the smallest affected surface and add a regression test.
+
+
+## Chunk 21: Frontend Project
+
+Create the planned Next.js frontend as a separate application surface. Keep it
+separate from the FastAPI backend and do not introduce Streamlit alongside it.
+
+Implement:
+
+- A frontend package and local development command.
+- Environment-based backend URL configuration.
+- Typed API client functions for health, text ingestion, file ingestion, and
+       tailoring.
+- A predictable loading, success, and error state model.
+- A frontend test command and production build command.
+
+The frontend must run without a model key because the backend owns provider
+configuration. Do not place API keys or resume content in the client bundle.
+
+Completion requires the frontend to start locally, reach the FastAPI health
+endpoint, and fail safely when the backend is unavailable.
+
+## Chunk 22: Input Experience
+
+Build the primary input screen for the resume and job description workflow.
+
+Implement:
+
+- Resume text input and resume file upload.
+- Job-description text input and job-description file upload.
+- Accepted file type and size messages.
+- Clear empty-input and parser-error states.
+- A visible ephemeral privacy mode indicator.
+- A submit action disabled until both required inputs are valid.
+
+The UI must not echo secrets, store raw documents in persistent browser storage,
+or silently replace pasted content with uploaded content. Upload and paste
+paths must produce equivalent normalized backend inputs.
+
+## Chunk 23: Provider Configuration UI
+
+Add provider configuration controls that map to the provider-neutral backend
+contract.
+
+Implement:
+
+- Default Groq mode with model status but no exposed shared key.
+- BYOK mode with provider and model fields.
+- Local mode with endpoint and model fields.
+- Secret inputs that are never displayed after entry.
+- Validation before model selection is enabled.
+- Explicit privacy and network behavior for each mode.
+
+BYOK values must not be written to local storage, URLs, analytics, or logs.
+Local mode must never silently fall back to Groq or another remote provider.
+
+## Chunk 24: API Workflow Contract
+
+Stabilize the frontend/backend API contract before adding live model rewriting.
+
+Define typed request and response schemas for:
+
+- Input documents and source metadata.
+- Provider configuration without serializing secrets.
+- Job requirements, matches, gaps, and uncertain matches.
+- Tailored resume output.
+- Validation warnings and export blocking.
+- Machine-readable and human-readable diffs.
+- Workflow state and safe error responses.
+
+Add contract tests that exercise the schemas through the API. Backward-incompatible
+changes require a documented versioning decision and updated frontend types.
+
+## Chunk 25: Live Rewrite Orchestration
+
+Replace the source-preserving rewrite stage with an injected model-backed rewrite
+stage while retaining the deterministic implementation as the test default.
+
+Implement:
+
+- Prompt construction through the Chunk 10 safety module.
+- Provider selection through `ModelProvider` only.
+- Structured model output parsing.
+- Bounded provider timeout and retry behavior.
+- Cancellation or request-abort handling where supported.
+- Safe provider errors with no raw prompt or response content in diagnostics.
+
+The rewrite stage may change only supported summary, experience, and skills
+content. It must prefer omission over invention and must send the result through
+claim validation before it can be exported.
+
+## Chunk 26: Structured Model Output
+
+Require model responses to conform to the structured rewrite schema.
+
+Implement:
+
+- JSON parsing with strict type validation.
+- Required `summary`, `experience`, `skills`, and `unsupported_claims` fields.
+- Rejection of malformed or extra unsafe output where appropriate.
+- A deterministic fallback to a reviewable failure state, never a fabricated
+       resume.
+- Tests for valid JSON, malformed JSON, missing fields, wrong field types, and
+       prompt-injection text inside model output.
+
+Treat the model response as untrusted external input. Do not execute, render as
+HTML, or interpret model-provided markup as code.
+
+## Chunk 27: Requirement Analysis
+
+Improve deterministic and model-assisted job-description analysis.
+
+Extract and classify:
+
+- Required and preferred skills.
+- Tools, platforms, languages, and frameworks.
+- Seniority and experience signals.
+- Responsibilities and domain keywords.
+- Explicit years, certifications, education, and location requirements.
+
+Preserve the source phrase for every extracted requirement. Add confidence and
+evidence fields where the classification is uncertain. A requirement absent
+from the resume must remain a gap rather than becoming a candidate claim.
+
+## Chunk 28: Matching and Evidence
+
+Improve resume-to-job matching beyond raw substring checks.
+
+Implement:
+
+- Case-insensitive normalized matching.
+- Alias handling only for verified, documented equivalents.
+- Evidence references to resume sections or lines.
+- Match, gap, and uncertain classifications.
+- Separate candidate evidence from job-description language.
+- Tests for synonyms, false positives, negated skills, and missing skills.
+
+Do not mark a requirement as matched solely because it appears in the job
+description or in an unsupported model-generated phrase.
+
+## Chunk 29: Review and Diff Experience
+
+Build the review screen around user verification rather than automatic trust.
+
+Display:
+
+- Original and tailored resume side by side or in a clear before/after view.
+- Section-level and line-level changes.
+- Added, removed, and rewritten text.
+- Requirement matches, gaps, and uncertain items.
+- Validation warnings before any export action.
+- A clear failed-validation state.
+
+Do not hide safety warnings behind a secondary settings page. The UI must not
+present a failed validation result as ready to send.
+
+## Chunk 30: Export Foundation
+
+Implement a common export representation and renderer interface.
+
+Implement:
+
+- A normalized resume document model.
+- Stable section ordering.
+- Plain-text and Markdown rendering.
+- Consistent escaping for user and model text.
+- Export metadata that preserves validation warnings.
+- Export blocking when validation fails.
+
+Export functions must be deterministic for the same validated input and must
+never write files outside an explicitly controlled destination.
+
+## Chunk 31: DOCX Export
+
+Implement DOCX export using the selected maintained renderer and the existing
+document representation.
+
+Requirements:
+
+- ATS-readable single-column layout by default.
+- Standard fonts and headings.
+- No hidden text, images, tables, or decorative columns in the default output.
+- Stable section and bullet formatting.
+- Safe filename generation.
+- Tests that reopen the generated DOCX and verify content preservation.
+
+DOCX export remains blocked when claim validation fails or rendering loses
+content. Record renderer errors without logging resume content.
+
+## Chunk 32: PDF Export
+
+Implement PDF export using a maintained renderer appropriate to the deployment
+environment.
+
+Requirements:
+
+- Reuse the same validated document representation as DOCX and Markdown.
+- Preserve section order and text content.
+- Use embedded or deployment-safe standard fonts.
+- Avoid layouts that produce unreadable ATS text extraction.
+- Provide actionable renderer errors.
+- Add text-extraction tests against generated PDFs.
+
+Do not introduce a PDF-only formatting path that can diverge from validation or
+the other export formats.
+
+## Chunk 33: ATS Inspection
+
+Expand ATS checks for uploaded and generated documents.
+
+Detect and report:
+
+- Tables, columns, text boxes, images, and decorative shapes.
+- Non-standard or missing fonts.
+- Headers and footers that may be ignored.
+- Unreadable text order.
+- Unsupported symbols and excessive formatting.
+- Missing contact information or section headings where applicable.
+
+Return structured risks with severity and evidence. ATS risks are warnings by
+default, while claim-safety failures remain export-blocking unless a deliberate
+product decision says otherwise.
+
+## Chunk 34: Error and Recovery UX
+
+Make all expected failures actionable in the frontend and API.
+
+Handle:
+
+- Empty or malformed inputs.
+- Unsupported files and size limits.
+- Missing provider configuration.
+- Invalid BYOK configuration.
+- Local endpoint unavailable.
+- Provider timeout, quota, and malformed response.
+- Rewrite validation failure.
+- Export renderer failure.
+
+Each error must identify the safe next action without exposing credentials,
+resume text, prompts, provider payloads, or stack traces to the user.
+
+## Chunk 35: Observability Without Sensitive Data
+
+Add operational diagnostics that do not capture sensitive content.
+
+Record only safe metadata such as:
+
+- Request correlation ID.
+- Route and stage name.
+- Provider name and model name.
+- Duration and bounded token counts.
+- Safe error category.
+- Validation status and export format.
+
+Never log resumes, job descriptions, prompts, model responses, uploaded files,
+API keys, authorization headers, or raw exception payloads. Add tests that scan
+captured logs for sensitive fixtures and secrets.
+
+## Chunk 36: Rate Limiting and Quotas
+
+Replace the in-memory shared-provider limiter with a deployment-appropriate
+bounded store when the application is deployed across processes or instances.
+
+Implement:
+
+- Per-session or authenticated-user limits.
+- Separate limits for shared Groq and user-owned providers.
+- Deterministic retry-after behavior.
+- Provider quota error mapping.
+- No fallback across privacy boundaries.
+- Tests for concurrent and window-expiration behavior.
+
+Document the chosen production store and its retention behavior. Do not persist
+resume or job-description content in the rate-limit store.
+
+## Chunk 37: Authentication and Account Boundaries
+
+Add authentication only after the text-only anonymous workflow is complete and
+privacy requirements are explicit.
+
+If authentication is introduced:
+
+- Keep provider secrets separate from account data.
+- Do not persist resumes by default.
+- Require explicit opt-in for saved profiles or history.
+- Provide deletion and retention controls.
+- Scope rate limits and saved data to the authenticated user.
+- Add authorization tests for every persisted resource.
+
+Authentication must not become a prerequisite for the core ephemeral workflow
+unless a documented product decision changes that requirement.
+
+## Chunk 38: Resume History and Versioning
+
+Implement history only after storage, deletion, and encryption decisions are
+approved.
+
+Store only what is necessary for the selected feature, with:
+
+- Explicit user consent.
+- Retention and deletion policy.
+- Version identifiers.
+- Original and tailored relationship tracking.
+- Validation and warning preservation.
+- Access control and encrypted storage where required.
+
+History must never silently activate for users who selected ephemeral mode.
+
+## Chunk 39: Production Deployment
+
+Prepare the backend and frontend for deployment without weakening privacy.
+
+Implement and document:
+
+- Separate development and production configuration.
+- Secret injection through the deployment platform.
+- HTTPS and secure cookie policy if authentication exists.
+- Restrictive CORS origins.
+- Request and upload limits.
+- Health and readiness endpoints.
+- Graceful shutdown and bounded worker behavior.
+- Dependency and container scanning.
+
+Do not commit production credentials, generated uploads, local databases, or
+deployment-specific secrets.
+
+## Chunk 40: End-to-End Verification
+
+Add end-to-end tests for the complete user workflow:
+
+1. Enter or upload a resume.
+2. Enter or upload a job description.
+3. Select a provider configuration.
+4. Analyze requirements and matches.
+5. Run a fake-provider rewrite.
+6. Display the before/after review and warnings.
+7. Block export for unsupported claims.
+8. Export a validated document.
+
+Run the same scenarios for successful output, missing skills, malformed input,
+provider failure, timeout, invalid configuration, and validation failure. E2E
+tests must use deterministic fixtures and fake providers unless an explicit
+staging integration test is being run.
+
+## Chunk 41: Performance Verification
+
+Measure the full rewrite path under representative resume and job-description
+sizes.
+
+Track:
+
+- Input parsing duration.
+- Analysis and matching duration.
+- Provider request duration.
+- Validation duration.
+- Export duration.
+- Total response time.
+- Memory use during upload and parsing.
+
+Keep the normal supported-provider path near the ten-second target when the
+provider permits it. Enforce bounded timeouts and reject inputs that could cause
+unbounded memory or processing growth.
+
+## Chunk 42: Accessibility and Usability
+
+Audit the Next.js workflow for keyboard, screen-reader, and responsive use.
+
+Verify:
+
+- Every input has a label and useful error association.
+- Loading and failure states are announced.
+- Warnings are not conveyed by color alone.
+- Diff additions and removals have accessible text labels.
+- Export blocking is visible and understandable.
+- The workflow works on mobile and desktop widths.
+
+Accessibility changes must not hide privacy or validation information.
+
+## Chunk 43: Documentation and Operations
+
+Keep developer and operator documentation synchronized with the implementation.
+
+Document:
+
+- Local setup and test commands.
+- Environment variables and safe example values.
+- Provider configuration behavior.
+- Privacy and retention behavior.
+- API request and response schemas.
+- Deployment requirements.
+- Troubleshooting for parser, provider, validation, and export failures.
+- The supported and intentionally deferred feature set.
+
+Never include real API keys, user documents, or sensitive fixtures in examples.
+
+## Chunk 44: Final Release Gate
+
+Before calling the full project complete, verify all of the following:
+
+- Backend tests, frontend tests, type checks, linting, and builds pass.
+- Acceptance gates pass without live credentials.
+- End-to-end workflows pass with fake providers.
+- Provider integrations have isolated integration tests where required.
+- No-fabrication validation blocks unsupported claims.
+- Privacy scans find no secrets or sensitive fixture content in logs or builds.
+- DOCX, PDF, and Markdown exports preserve validated content.
+- ATS warnings and validation failures are visible before export.
+- Ephemeral mode does not persist documents.
+- Authentication and history, if present, enforce retention and deletion rules.
+- Deployment configuration uses injected secrets and restrictive network policy.
+- Documentation reflects the actual implemented feature set.
+
+The final release report must list completed chunks, deferred decisions, test
+commands and results, known limitations, and any required production setup.

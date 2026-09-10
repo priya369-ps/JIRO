@@ -2,12 +2,16 @@
 
 from typing import Literal
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from fastapi.responses import JSONResponse
 
 from app.config import load_settings
+from app.errors import public_error
 from app.ingest import IngestionError
+from app.model_provider import ModelProviderError
+from app.exporters import ExportError
 from app.pipeline import DefaultInputParser, build_default_pipeline
 from app.reliability import RequestSizeLimitMiddleware, cors_origins
 from app.schemas import TailoringRequest
@@ -37,6 +41,25 @@ app.add_middleware(
 settings = load_settings()
 input_parser = DefaultInputParser()
 tailoring_pipeline = build_default_pipeline()
+
+
+@app.exception_handler(ModelProviderError)
+async def provider_error_handler(request: Request, error: ModelProviderError) -> JSONResponse:
+    category = "configuration" if "configured" in str(error).lower() else "provider"
+    public = public_error(category, str(error))
+    return JSONResponse(status_code=public.status_code, content=public.payload.model_dump())
+
+
+@app.exception_handler(ExportError)
+async def export_error_handler(request: Request, error: ExportError) -> JSONResponse:
+    public = public_error("export", str(error))
+    return JSONResponse(status_code=public.status_code, content=public.payload.model_dump())
+
+
+@app.exception_handler(Exception)
+async def unexpected_error_handler(request: Request, error: Exception) -> JSONResponse:
+    public = public_error("unknown", "The request could not be completed safely.")
+    return JSONResponse(status_code=public.status_code, content=public.payload.model_dump())
 
 
 class TextInput(BaseModel):

@@ -97,6 +97,10 @@ class TailoringOutputTests(unittest.TestCase):
             ),
         )
         self.assertTrue(all("ATS risk:" in warning for warning in result.validation.warnings[1:]))
+        self.assertEqual(
+            [(item.code, item.severity) for item in result.validation.ats_findings],
+            [("columns", "high"), ("table", "high"), ("image", "medium")],
+        )
 
     def test_matching_supports_verified_aliases_and_rejects_negated_skills(self) -> None:
         result = build_tailoring_result(

@@ -55,6 +55,17 @@ class ValidationResult:
     warnings: tuple[str, ...]
     export_blocked: bool
     ats_risks: tuple[str, ...] = ()
+    ats_findings: tuple["ATSRisk", ...] = ()
+
+
+@dataclass(frozen=True)
+class ATSRisk:
+    """Structured ATS warning with severity and source evidence."""
+
+    code: str
+    severity: str
+    message: str
+    evidence: str
 
 
 @dataclass(frozen=True)
@@ -106,6 +117,20 @@ def _detect_ats_risks(resume: str) -> tuple[str, ...]:
     return tuple(risks)
 
 
+def detect_ats_findings(resume: str) -> tuple[ATSRisk, ...]:
+    """Return structured ATS risks for review and future document parsers."""
+    findings: list[ATSRisk] = []
+    lines = resume.splitlines()
+    for index, line in enumerate(lines, start=1):
+        if "\t" in line:
+            findings.append(ATSRisk("columns", "high", "Tab-separated columns may be difficult for ATS parsers to read.", f"Resume line {index}"))
+        if line.count("|") >= 2:
+            findings.append(ATSRisk("table", "high", "Table-like content may be difficult for ATS parsers to read.", f"Resume line {index}"))
+    if re.search(r"!\[[^\]]*\]\([^)]*\)|\[(?:image|photo|logo)\]", resume, re.IGNORECASE):
+        findings.append(ATSRisk("image", "medium", "Images may be ignored by ATS parsers.", "Image marker in resume text"))
+    return tuple(findings)
+
+
 def build_tailoring_result(resume: str, job_description: str) -> TailoringResult:
     """Build a safe source-preserving result without inventing candidate facts."""
     requirements = extract_requirements(job_description)
@@ -115,7 +140,12 @@ def build_tailoring_result(resume: str, job_description: str) -> TailoringResult
     ats_risks = detect_ats_risks(resume)
     from app.safety import validate_claims
 
-    validation = validate_claims(resume, tailored_resume, ats_risks=ats_risks)
+    validation = validate_claims(
+        resume,
+        tailored_resume,
+        ats_risks=ats_risks,
+        ats_findings=detect_ats_findings(resume),
+    )
     diff = build_diff(resume, tailored_resume)
     exports = render_exports(tailored_resume)
     return TailoringResult(

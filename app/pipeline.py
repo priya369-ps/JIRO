@@ -14,6 +14,7 @@ from app.outputs import (
     TailoringResult,
     build_diff,
     detect_ats_risks,
+    detect_ats_findings,
     extract_requirements,
     match_requirements,
 )
@@ -65,6 +66,7 @@ class DefaultClaimValidator:
             original_resume,
             tailored_resume,
             ats_risks=detect_ats_risks(original_resume),
+            ats_findings=detect_ats_findings(original_resume),
         )
 
 

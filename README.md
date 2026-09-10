@@ -124,3 +124,17 @@ Anthropic upstream configuration without persisting or exposing the key.
 use the shared Groq key or fall back to another provider. Provider failures are
 returned as safe configuration or request errors, while tests use an injected
 transport and do not make live network calls.
+
+## Chunk 10 Implementation
+
+Prompt and claim safety is implemented in [app/safety.py](app/safety.py). The
+rewrite prompt identifies the source resume as the only authority for candidate
+facts, treats missing job-description requirements as gaps, prohibits invented
+companies, titles, dates, skills, responsibilities, achievements, and metrics,
+and requests a structured response schema.
+
+`DeterministicClaimValidator` compares generated text with the source resume and
+flags unsupported dates, metrics, companies, titles, known technical skills,
+and responsibility statements. Failed validation is marked untrusted and blocks
+export through `ValidationResult.export_blocked`; warnings remain attached for
+review. Tests use deterministic text and do not require a model call.

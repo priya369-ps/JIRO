@@ -217,6 +217,25 @@ response metadata, and parser/provider errors contain safe messages without
 echoing resume, job-description, file, or credential content. Extracted text
 and model output continue to be treated as untrusted input for later stages.
 
+## Chunks 20-30 Implementation
+
+The safety-first conflict policy remains executable through
+`app.decisions.resolve_conflict`. JIRO now also includes a separate Next.js
+frontend under [frontend](frontend) with typed API calls, ephemeral in-memory
+input handling, provider selection without secret entry, loading/error states,
+review warnings, matches, gaps, diffs, and export availability.
+
+Backend contract work includes strict tailoring and structured rewrite schemas,
+safe JSON model-output parsing, normalized matching with documented aliases,
+negation handling, confidence fields, and resume-line evidence. The default
+rewrite remains source-preserving until a live model orchestration milestone;
+malformed model output is rejected rather than used as a fallback resume.
+
+Run the backend with `uvicorn app.main:app --reload`. Run the frontend with
+`cd frontend`, `npm install`, and `npm run dev`; set
+`NEXT_PUBLIC_API_BASE_URL` when the backend uses a different URL. The frontend
+does not persist documents or provider secrets.
+
 ## Chunk 13 Implementation
 
 The API applies an explicit request-body limit, restrictive CORS defaults, and

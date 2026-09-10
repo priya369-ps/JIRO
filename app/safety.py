@@ -1,8 +1,11 @@
 """Prompt and claim-safety controls for model-backed resume tailoring."""
 
 from dataclasses import dataclass
+import json
 import re
 from typing import Final
+
+from app.schemas import RewriteOutput
 
 
 NO_FABRICATION_SYSTEM_PROMPT: Final = """You are JIRO, an AI resume tailoring assistant.
@@ -75,6 +78,22 @@ def build_rewrite_prompt(source_resume: str, job_description: str) -> str:
         "JOB DESCRIPTION (alignment context, not evidence of candidate facts):\n"
         f"<job_description>\n{job_description}\n</job_description>"
     )
+
+
+def parse_rewrite_output(content: str) -> RewriteOutput:
+    """Parse untrusted model JSON into the strict rewrite contract."""
+    if not isinstance(content, str) or not content.strip():
+        raise ValueError("Model rewrite response cannot be empty.")
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError as error:
+        raise ValueError("Model rewrite response must be valid JSON.") from error
+    if not isinstance(payload, dict):
+        raise ValueError("Model rewrite response must be a JSON object.")
+    try:
+        return RewriteOutput.model_validate(payload)
+    except Exception as error:
+        raise ValueError("Model rewrite response does not match the required schema.") from error
 
 
 def find_unsupported_claims(original_resume: str, tailored_resume: str) -> tuple[ClaimFinding, ...]:

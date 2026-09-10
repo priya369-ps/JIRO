@@ -25,6 +25,15 @@ _STOP_WORDS: Final = frozenset(
         "you",
     }
 )
+_ALIASES: Final = {
+    "postgres": "postgresql",
+    "k8s": "kubernetes",
+    "js": "javascript",
+    "ts": "typescript",
+}
+_SKILL_TERMS: Final = frozenset(
+    {"python", "javascript", "typescript", "react", "fastapi", "docker", "kubernetes", "postgresql", "sql"}
+)
 
 
 @dataclass(frozen=True)
@@ -35,6 +44,7 @@ class Requirement:
     category: str
     status: str
     evidence: str | None = None
+    confidence: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -129,19 +139,51 @@ def match_requirements(
     requirements: tuple[Requirement, ...],
 ) -> tuple[tuple[Requirement, ...], tuple[Requirement, ...]]:
     """Match requirements against resume text without changing either input."""
-    resume_lower = resume.casefold()
+    resume_lower = _normalized_match_text(resume)
+    resume_lines = resume.splitlines()
     matches = tuple(
-        Requirement(item.value, item.category, "matched", f"Found in source resume: {item.value}")
+        Requirement(
+            item.value,
+            item.category,
+            "matched",
+            _evidence_for(resume_lines, item.value),
+            item.confidence,
+        )
         for item in requirements
-        if item.value.casefold() in resume_lower
+        if _requirement_is_supported(item.value, resume_lower, resume_lines)
     )
-    matched_values = {requirement.value.casefold() for requirement in matches}
+    matched_values = {_normalized_match_text(requirement.value) for requirement in matches}
     gaps = tuple(
-        Requirement(item.value, item.category, "gap", None)
+        Requirement(item.value, item.category, "gap", None, item.confidence)
         for item in requirements
-        if item.value.casefold() not in matched_values
+        if _normalized_match_text(item.value) not in matched_values
     )
     return matches, gaps
+
+
+def _normalized_match_text(value: str) -> str:
+    return re.sub(r"[^a-z0-9+#]+", " ", value.casefold()).strip()
+
+
+def _requirement_is_supported(value: str, resume_lower: str, resume_lines: list[str]) -> bool:
+    normalized = _normalized_match_text(value)
+    candidates = {normalized, _ALIASES.get(normalized, normalized)}
+    candidates.update(alias for alias, canonical in _ALIASES.items() if canonical == normalized)
+    if any(re.search(rf"\b(?:no|without|not)\s+{re.escape(candidate)}\b", resume_lower) for candidate in candidates):
+        return False
+    return any(candidate in resume_lower for candidate in candidates)
+
+
+def _evidence_for(lines: list[str], value: str) -> str:
+    normalized = _normalized_match_text(value)
+    alias = _ALIASES.get(normalized, normalized)
+    aliases = {normalized, alias}
+    aliases.update(alias_name for alias_name, canonical in _ALIASES.items() if canonical == normalized)
+    for index, line in enumerate(lines, start=1):
+        line_lower = _normalized_match_text(line)
+        if any(candidate in line_lower for candidate in aliases):
+            return f"Resume line {index}: {line.strip()}"
+    return f"Found in source resume: {value}"
 
 
 def detect_ats_risks(resume: str) -> tuple[str, ...]:
@@ -172,9 +214,20 @@ def _extract_requirements(job_description: str) -> tuple[Requirement, ...]:
         if len(normalized) < 3 or key in _STOP_WORDS or key in seen:
             continue
         seen.add(key)
-        category = "tool_or_skill" if any(character in normalized for character in "+#./-") else "keyword"
+        category = _requirement_category(normalized)
         requirements.append(Requirement(normalized, category, "unmatched", None))
     return tuple(requirements)
+
+
+def _requirement_category(value: str) -> str:
+    lowered = value.casefold()
+    if lowered in _SKILL_TERMS or any(character in value for character in "+#./-"):
+        return "tool_or_skill"
+    if lowered in {"senior", "lead", "manager", "director", "principal"}:
+        return "seniority"
+    if re.fullmatch(r"\d+", value):
+        return "experience_signal"
+    return "keyword"
 
 
 def _build_diff(original: str, tailored: str) -> DiffResult:

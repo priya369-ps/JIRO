@@ -73,6 +73,19 @@ class TailoringOutputTests(unittest.TestCase):
         )
         self.assertTrue(all("ATS risk:" in warning for warning in result.validation.warnings[1:]))
 
+    def test_matching_supports_verified_aliases_and_rejects_negated_skills(self) -> None:
+        result = build_tailoring_result(
+            "Backend engineer\nBuilt services with Postgres.",
+            "PostgreSQL and Python",
+        )
+
+        self.assertEqual([item.value for item in result.matches], ["PostgreSQL"])
+        self.assertIn("Resume line 2", result.matches[0].evidence or "")
+        self.assertEqual([item.value for item in result.gaps], ["Python"])
+
+        negated = build_tailoring_result("Developer\nNo Python experience.", "Python")
+        self.assertEqual([item.value for item in negated.gaps], ["Python"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,6 +10,7 @@ from app.config import load_settings
 from app.ingest import IngestionError
 from app.pipeline import DefaultInputParser, build_default_pipeline
 from app.reliability import RequestSizeLimitMiddleware, cors_origins
+from app.schemas import TailoringRequest
 from app.workflow import input_workflow_state, review_workflow_state
 
 
@@ -48,11 +49,8 @@ class TextInput(BaseModel):
     privacy_mode: Literal["ephemeral"] = "ephemeral"
 
 
-class TailoringInput(BaseModel):
+class TailoringInput(TailoringRequest):
     """Source inputs for the structured tailoring output contract."""
-
-    resume: str
-    job_description: str
 
 
 @app.get("/health")
@@ -131,4 +129,6 @@ def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
     result = tailoring_pipeline.run(resume, job_description)
     response = result.as_dict()
     response["workflow"] = review_workflow_state(result)
+    response["provider"] = input_data.provider
+    response["model"] = input_data.model or ""
     return response

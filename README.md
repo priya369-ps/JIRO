@@ -96,3 +96,16 @@ will use direct provider SDKs behind the provider-neutral interface, without
 adding an orchestration framework before a real multi-step workflow requires
 one. DOCX and PDF export dependencies likewise remain deferred until their
 export milestone.
+
+## Chunk 08 Implementation
+
+The provider contract is implemented in
+[app/model_provider.py](app/model_provider.py). `ModelProvider` exposes the
+single `generate(prompt, config) -> ModelResponse` boundary, while
+`ModelConfig` carries provider-neutral model settings. `ModelResponse` retains
+safe diagnostic metadata including provider, model, request ID, token counts,
+and finish status without exposing API keys.
+
+The contract validates provider names, model names, prompts, and token counts.
+Provider implementations are intentionally deferred to Chunk 9; tests use a
+fake provider and never require live credentials.

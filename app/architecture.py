@@ -1,6 +1,5 @@
 """Stable dependency boundaries for the JIRO processing architecture."""
 
-from dataclasses import dataclass
 from typing import Protocol
 
 from app.ingest import IngestedDocument
@@ -10,19 +9,7 @@ from app.outputs import (
     TailoringResult,
     ValidationResult,
 )
-
-
-@dataclass(frozen=True)
-class ModelResponse:
-    """Provider-neutral model response metadata and generated content."""
-
-    content: str
-    provider: str
-    model: str
-    request_id: str | None = None
-    input_tokens: int | None = None
-    output_tokens: int | None = None
-    finish_status: str | None = None
+from app.model_provider import ModelConfig, ModelProvider, ModelProviderError, ModelResponse
 
 
 class InputParser(Protocol):
@@ -77,13 +64,6 @@ class ExportRenderer(Protocol):
     """Render validated output into an explicitly named export format."""
 
     def export(self, resume: str) -> tuple[ExportResult, ...]:
-        ...
-
-
-class ModelProvider(Protocol):
-    """Provider-neutral interface for all model access."""
-
-    def generate(self, prompt: str, config: dict[str, object]) -> ModelResponse:
         ...
 
 

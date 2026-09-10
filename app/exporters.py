@@ -4,6 +4,8 @@ from io import BytesIO
 
 from docx import Document
 from docx.shared import Inches, Pt
+from reportlab.lib.pagesizes import LETTER
+from reportlab.pdfgen.canvas import Canvas
 
 from app.privacy import sanitize_filename
 
@@ -42,3 +44,25 @@ def render_docx(resume: str) -> tuple[str, bytes]:
     output = BytesIO()
     document.save(output)
     return filename, output.getvalue()
+
+
+def render_pdf(resume: str) -> tuple[str, bytes]:
+    """Render resume text as a simple ATS-readable PDF."""
+    if not resume.strip():
+        raise ExportError("Cannot export an empty resume.")
+
+    output = BytesIO()
+    canvas = Canvas(output, pagesize=LETTER)
+    width, height = LETTER
+    x = 54
+    y = height - 54
+    canvas.setFont("Helvetica", 10)
+    for line in resume.splitlines():
+        if y < 54:
+            canvas.showPage()
+            canvas.setFont("Helvetica", 10)
+            y = height - 54
+        canvas.drawString(x, y, line.strip()[:120])
+        y -= 14
+    canvas.save()
+    return sanitize_filename("tailored-resume.pdf"), output.getvalue()

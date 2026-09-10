@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from docx import Document
 
 from app.main import app
-from app.exporters import render_docx
+from app.exporters import render_docx, render_pdf
 from app.outputs import build_tailoring_result
 
 
@@ -27,7 +27,19 @@ class TailoringOutputTests(unittest.TestCase):
         self.assertEqual(result.exports[0].format, "markdown")
         self.assertTrue(result.exports[1].available)
         self.assertTrue(result.exports[1].content)
-        self.assertFalse(result.exports[2].available)
+        self.assertTrue(result.exports[2].available)
+
+    def test_pdf_export_preserves_text_for_extraction(self) -> None:
+        filename, content = render_pdf("Alex Developer\nPython services")
+
+        import pdfplumber
+
+        with pdfplumber.open(BytesIO(content)) as document:
+            extracted = "\n".join(page.extract_text() or "" for page in document.pages)
+
+        self.assertEqual(filename, "tailored-resume.pdf")
+        self.assertIn("Alex Developer", extracted)
+        self.assertIn("Python services", extracted)
 
     def test_docx_export_preserves_text_in_single_column_document(self) -> None:
         filename, content = render_docx("Alex Developer\n- Built Python services")

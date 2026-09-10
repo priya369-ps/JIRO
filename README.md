@@ -267,3 +267,30 @@ Conflict resolution is encoded by `resolve_conflict`: preserve user data,
 provider isolation, and the no-fabrication guarantee first; then make the
 smallest affected change and add a regression test. The priorities are
 read-only metadata and are covered by deterministic tests.
+
+## Chunks 31-40 Implementation
+
+Chunks 31-40 are implemented in focused milestones:
+
+- DOCX and PDF exports use deterministic ATS-friendly renderers and are
+	verified by reopening or extracting generated documents.
+- ATS inspection returns structured risks with severity and evidence.
+- API errors use safe categories and do not echo private provider or document
+	details.
+- Correlation IDs and allowlisted telemetry provide operational diagnostics
+	without sensitive content.
+- Provider quotas return deterministic retry-after behavior.
+- Optional bearer authentication protects API routes without changing the
+	default anonymous ephemeral workflow.
+- Resume versioning is explicit opt-in and process-local until durable storage,
+	deletion, and encryption decisions are approved.
+- Docker deployment artifacts and a provider-independent readiness endpoint are
+	available.
+- Deterministic end-to-end tests cover file input, successful review and export,
+	and unsupported-claim export blocking.
+
+Run the backend end-to-end checks with:
+
+```bash
+python -m unittest discover -s tests -v
+```

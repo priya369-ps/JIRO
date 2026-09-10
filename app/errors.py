@@ -13,6 +13,7 @@ ErrorCategory = Literal["input", "configuration", "provider", "validation", "exp
 class PublicError:
     status_code: int
     payload: SafeError
+    headers: dict[str, str] | None = None
 
 
 def public_error(category: ErrorCategory, detail: str) -> PublicError:

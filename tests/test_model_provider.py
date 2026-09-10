@@ -9,6 +9,7 @@ from app.model_provider import (
     ModelResponse,
     ProviderConfigurationError,
     ProviderRequestError,
+    ProviderRateLimitError,
     SessionRateLimiter,
     validate_prompt,
 )
@@ -105,8 +106,9 @@ class ModelProviderContractTests(unittest.TestCase):
     def test_rate_limit_is_bounded_per_session(self) -> None:
         limiter = SessionRateLimiter(limit=1)
         limiter.check("session-a")
-        with self.assertRaisesRegex(ProviderRequestError, "rate limit"):
+        with self.assertRaisesRegex(ProviderRateLimitError, "rate limit") as error:
             limiter.check("session-a")
+        self.assertGreaterEqual(error.exception.retry_after, 1)
         limiter.check("session-b")
 
 

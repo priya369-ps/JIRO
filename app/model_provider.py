@@ -27,6 +27,14 @@ class ProviderRequestError(ModelProviderError):
     """Raised when a provider request fails without exposing sensitive data."""
 
 
+class ProviderRateLimitError(ProviderRequestError):
+    """Raised when a provider session exceeds its bounded quota."""
+
+    def __init__(self, retry_after: int) -> None:
+        self.retry_after = max(1, retry_after)
+        super().__init__("Provider rate limit exceeded; retry later.")
+
+
 @dataclass(frozen=True)
 class ModelConfig:
     """Validated model settings passed to a provider implementation.
@@ -116,7 +124,8 @@ class SessionRateLimiter:
         now = monotonic()
         calls = [stamp for stamp in self._calls.get(session_id, []) if now - stamp < self.window_seconds]
         if len(calls) >= self.limit:
-            raise ProviderRequestError("Provider rate limit exceeded; retry later.")
+            retry_after = int(self.window_seconds - (now - calls[0])) + 1
+            raise ProviderRateLimitError(retry_after)
         calls.append(now)
         self._calls[session_id] = calls
 

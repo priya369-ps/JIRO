@@ -10,7 +10,7 @@ from fastapi.responses import JSONResponse
 from app.config import load_settings
 from app.errors import public_error
 from app.ingest import IngestionError
-from app.model_provider import ModelProviderError
+from app.model_provider import ModelProviderError, ProviderRateLimitError
 from app.exporters import ExportError
 from app.pipeline import DefaultInputParser, build_default_pipeline
 from app.reliability import RequestSizeLimitMiddleware, cors_origins
@@ -47,6 +47,12 @@ tailoring_pipeline = build_default_pipeline()
 
 @app.exception_handler(ModelProviderError)
 async def provider_error_handler(request: Request, error: ModelProviderError) -> JSONResponse:
+    if isinstance(error, ProviderRateLimitError):
+        return JSONResponse(
+            status_code=429,
+            content={"detail": str(error), "category": "provider"},
+            headers={"Retry-After": str(error.retry_after)},
+        )
     category = "configuration" if "configured" in str(error).lower() else "provider"
     public = public_error(category, str(error))
     return JSONResponse(status_code=public.status_code, content=public.payload.model_dump())

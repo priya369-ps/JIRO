@@ -81,3 +81,18 @@ FastAPI layer delegates ingestion to `DefaultInputParser` and tailoring to
 or pipeline implementation details. The deterministic pipeline preserves the
 current no-fabrication behavior while leaving model-provider implementations
 for later chunks.
+
+## Chunk 07 Implementation
+
+JIRO uses FastAPI for the backend and keeps the current MVP text-first, with no
+frontend framework introduced yet. PDF and DOCX ingestion use `pdfplumber` and
+`python-docx`, respectively; TXT input is handled by the standard library.
+Markdown is the currently implemented export format.
+
+The future full product frontend is planned as Next.js. It will be introduced
+as a separate frontend once the backend workflow and provider contract are
+ready; Streamlit is intentionally not added alongside it. Future model access
+will use direct provider SDKs behind the provider-neutral interface, without
+adding an orchestration framework before a real multi-step workflow requires
+one. DOCX and PDF export dependencies likewise remain deferred until their
+export milestone.

@@ -1,8 +1,11 @@
 import unittest
+from io import BytesIO
 
 from fastapi.testclient import TestClient
+from docx import Document
 
 from app.main import app
+from app.exporters import render_docx
 from app.outputs import build_tailoring_result
 
 
@@ -22,8 +25,18 @@ class TailoringOutputTests(unittest.TestCase):
         self.assertFalse(result.validation.export_blocked)
         self.assertTrue(result.exports[0].available)
         self.assertEqual(result.exports[0].format, "markdown")
-        self.assertFalse(result.exports[1].available)
+        self.assertTrue(result.exports[1].available)
+        self.assertTrue(result.exports[1].content)
         self.assertFalse(result.exports[2].available)
+
+    def test_docx_export_preserves_text_in_single_column_document(self) -> None:
+        filename, content = render_docx("Alex Developer\n- Built Python services")
+
+        document = Document(BytesIO(content))
+        paragraphs = [paragraph.text for paragraph in document.paragraphs]
+
+        self.assertEqual(filename, "tailored-resume.docx")
+        self.assertEqual(paragraphs, ["Alex Developer", "Built Python services"])
 
     def test_tailor_endpoint_returns_serializable_output_contract(self) -> None:
         with TestClient(app) as client:

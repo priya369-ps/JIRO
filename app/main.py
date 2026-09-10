@@ -14,6 +14,7 @@ from app.model_provider import ModelProviderError
 from app.exporters import ExportError
 from app.pipeline import DefaultInputParser, build_default_pipeline
 from app.reliability import RequestSizeLimitMiddleware, cors_origins
+from app.telemetry import CorrelationIdMiddleware
 from app.schemas import TailoringRequest
 from app.workflow import input_workflow_state, review_workflow_state
 
@@ -30,6 +31,7 @@ PIPELINE_STAGES = (
 )
 
 app = FastAPI(title=PRODUCT_NAME, version="0.1.0")
+app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(
     CORSMiddleware,

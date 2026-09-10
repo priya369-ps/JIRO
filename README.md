@@ -294,3 +294,27 @@ Run the backend end-to-end checks with:
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Chunk 01-30 Audit
+
+The repository foundation for Chunks 1-30 is implemented and validated: the
+FastAPI backend, Next.js frontend, ingestion, structured outputs, provider
+adapters, safety checks, privacy controls, reliability middleware, workflow
+metadata, decisions, API schemas, normalized matching, and deterministic tests
+are present. The Python suite and Next.js production build pass.
+
+The following areas remain intentionally partial rather than being falsely
+reported as complete:
+
+- Chunk 23 has provider selection UI, but secure BYOK entry is still pending.
+- Chunk 25 still uses the source-preserving rewrite by default; live model
+	orchestration is pending.
+- Chunk 26 has strict schema definitions and rejection tests, but the live
+	model response parser is pending.
+- Chunk 27 has deterministic token analysis, but richer required/preferred,
+	seniority, education, and location classification is pending.
+- Chunk 29 exposes review output and warnings, while the full interactive
+	before/after diff experience is pending.
+
+These gaps are preserved explicitly so later agents can implement them without
+weakening the no-fabrication, privacy, or provider-isolation constraints.

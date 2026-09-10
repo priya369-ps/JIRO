@@ -119,6 +119,7 @@ def validate_claims(
     tailored_resume: str,
     *,
     ats_risks: tuple[str, ...] = (),
+    ats_findings=(),
 ):
     """Return the shared output validation result for generated resume text."""
     from app.outputs import ValidationResult
@@ -137,6 +138,7 @@ def validate_claims(
         warnings=tuple(warnings),
         export_blocked=bool(findings),
         ats_risks=ats_risks,
+        ats_findings=tuple(ats_findings),
     )
 
 

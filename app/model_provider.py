@@ -9,6 +9,8 @@ from typing import Callable, Literal, Mapping, Protocol
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
+from app.privacy import remove_sensitive_keys
+
 
 ProviderName = Literal["groq", "byok", "local"]
 
@@ -155,7 +157,7 @@ class OpenAICompatibleProvider:
         payload = {
             "model": config.model,
             "messages": [{"role": "user", "content": prompt}],
-            **dict(config.options),
+            **remove_sensitive_keys(config.options),
         }
         response = self._transport(endpoint, payload, headers)
         return _response_from_payload(self.provider, config.model, response)

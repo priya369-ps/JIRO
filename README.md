@@ -147,3 +147,17 @@ validation, formatting, and export. The current defaults are deterministic and
 source-preserving, while tests can replace any stage with a fake implementation
 without making a model call. Validation runs before export, and failed
 validation blocks export results while retaining the warnings.
+
+## Chunk 12 Implementation
+
+Privacy controls are implemented in [app/privacy.py](app/privacy.py) and are
+applied at ingestion and provider boundaries. Filenames reject paths, hidden
+names, control characters, traversal names, and excessive lengths. Text and
+file limits remain enforced, and source documents are held only in the request
+pipeline; JIRO does not add persistence or write uploaded content to disk.
+
+Provider options are filtered so secret-like keys cannot enter outbound model
+payloads. Diagnostic mappings can be redacted, API keys remain excluded from
+response metadata, and parser/provider errors contain safe messages without
+echoing resume, job-description, file, or credential content. Extracted text
+and model output continue to be treated as untrusted input for later stages.

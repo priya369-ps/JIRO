@@ -198,10 +198,22 @@ def build_diff(original: str, tailored: str) -> DiffResult:
 
 def render_exports(resume: str) -> tuple[ExportResult, ...]:
     """Render supported output formats and report deferred formats explicitly."""
+    from app.exporters import render_docx, render_pdf
+
+    try:
+        _, docx_content = render_docx(resume)
+        docx_export = ExportResult("docx", True, docx_content.hex(), None)
+    except Exception as error:
+        docx_export = ExportResult("docx", False, None, "DOCX export failed safely.")
+    try:
+        _, pdf_content = render_pdf(resume)
+        pdf_export = ExportResult("pdf", True, pdf_content.hex(), None)
+    except Exception:
+        pdf_export = ExportResult("pdf", False, None, "PDF export failed safely.")
     return (
         ExportResult("markdown", True, _markdown_export(resume), None),
-        ExportResult("docx", False, None, "DOCX export is planned for a later milestone."),
-        ExportResult("pdf", False, None, "PDF export is planned for a later milestone."),
+        docx_export,
+        pdf_export,
     )
 
 

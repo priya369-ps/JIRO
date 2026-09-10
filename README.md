@@ -267,3 +267,54 @@ Conflict resolution is encoded by `resolve_conflict`: preserve user data,
 provider isolation, and the no-fabrication guarantee first; then make the
 smallest affected change and add a regression test. The priorities are
 read-only metadata and are covered by deterministic tests.
+
+## Chunks 31-40 Implementation
+
+Chunks 31-40 are implemented in focused milestones:
+
+- DOCX and PDF exports use deterministic ATS-friendly renderers and are
+	verified by reopening or extracting generated documents.
+- ATS inspection returns structured risks with severity and evidence.
+- API errors use safe categories and do not echo private provider or document
+	details.
+- Correlation IDs and allowlisted telemetry provide operational diagnostics
+	without sensitive content.
+- Provider quotas return deterministic retry-after behavior.
+- Optional bearer authentication protects API routes without changing the
+	default anonymous ephemeral workflow.
+- Resume versioning is explicit opt-in and process-local until durable storage,
+	deletion, and encryption decisions are approved.
+- Docker deployment artifacts and a provider-independent readiness endpoint are
+	available.
+- Deterministic end-to-end tests cover file input, successful review and export,
+	and unsupported-claim export blocking.
+
+Run the backend end-to-end checks with:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+## Chunk 01-30 Audit
+
+The repository foundation for Chunks 1-30 is implemented and validated: the
+FastAPI backend, Next.js frontend, ingestion, structured outputs, provider
+adapters, safety checks, privacy controls, reliability middleware, workflow
+metadata, decisions, API schemas, normalized matching, and deterministic tests
+are present. The Python suite and Next.js production build pass.
+
+The following areas remain intentionally partial rather than being falsely
+reported as complete:
+
+- Chunk 23 has provider selection UI, but secure BYOK entry is still pending.
+- Chunk 25 still uses the source-preserving rewrite by default; live model
+	orchestration is pending.
+- Chunk 26 has strict schema definitions and rejection tests, but the live
+	model response parser is pending.
+- Chunk 27 has deterministic token analysis, but richer required/preferred,
+	seniority, education, and location classification is pending.
+- Chunk 29 exposes review output and warnings, while the full interactive
+	before/after diff experience is pending.
+
+These gaps are preserved explicitly so later agents can implement them without
+weakening the no-fabrication, privacy, or provider-isolation constraints.

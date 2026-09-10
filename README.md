@@ -43,6 +43,29 @@ Run the complete deterministic gate with:
 ```bash
 python -m unittest discover -s tests -v
 ```
+
+## Chunk 17 Implementation
+
+Deterministic acceptance gates are implemented in [app/gates.py](app/gates.py).
+They verify configuration, malformed and oversized inputs, missing-skill gap
+reporting, unsupported-claim export blocking, provider timeout handling, and
+secret-free provider metadata without network access or real credentials.
+
+Run the acceptance gate directly with:
+
+```bash
+python -m app.gates
+```
+
+The command returns a non-zero exit code if any gate fails.
+
+## Chunk 18 Implementation
+
+`DefinitionOfDoneReport` in [app/gates.py](app/gates.py) combines acceptance
+results with explicit evidence that focused tests passed and documentation is
+current. It exposes `passed` and `failures` so automation can block completion
+when a product, safety, privacy, testing, or documentation requirement is not
+verified.
 ```bash
 uvicorn app.main:app --reload
 ```

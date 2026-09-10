@@ -6,6 +6,7 @@ from typing import Final
 
 
 MAX_FILENAME_LENGTH: Final = 255
+MAX_TEXT_BYTES: Final = 5 * 1024 * 1024
 _SECRET_KEY_PATTERN: Final = re.compile(
     r"(?:api[_-]?key|authorization|password|secret|token|credential)",
     re.IGNORECASE,
@@ -56,4 +57,6 @@ def ensure_text_input(value: object, *, label: str) -> str:
         raise PrivacyError(f"{label} must be text.")
     if not value.strip():
         raise PrivacyError(f"{label} cannot be empty.")
+    if len(value.encode("utf-8")) > MAX_TEXT_BYTES:
+        raise PrivacyError(f"{label} exceeds the 5 MB limit.")
     return value

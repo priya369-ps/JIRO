@@ -1,5 +1,7 @@
 """JIRO API and input ingestion endpoints."""
 
+from dataclasses import replace
+from time import perf_counter
 from typing import Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -159,6 +161,7 @@ async def ingest_file_input(
 @app.post("/tailor")
 def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
     """Return all Chunk 4 outputs while preserving the source resume."""
+    parse_started = perf_counter()
     try:
         resume = input_parser.parse_text(
             input_data.resume,
@@ -172,6 +175,16 @@ def tailor_resume(input_data: TailoringInput) -> dict[str, object]:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     result = tailoring_pipeline.run(resume, job_description)
+    if result.performance is not None:
+        parse_duration_ms = (perf_counter() - parse_started) * 1000
+        result = replace(
+            result,
+            performance=replace(
+                result.performance,
+                input_parsing_ms=parse_duration_ms,
+                total_ms=result.performance.total_ms + parse_duration_ms,
+            ),
+        )
     response = result.as_dict()
     response["workflow"] = review_workflow_state(result)
     response["provider"] = input_data.provider

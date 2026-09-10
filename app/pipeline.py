@@ -18,6 +18,8 @@ from app.outputs import (
     extract_requirements,
     match_requirements,
 )
+from app.performance import PerformanceMonitor
+from app.privacy import ensure_text_input
 from app.safety import validate_claims
 
 
@@ -107,11 +109,21 @@ class DeterministicTailoringPipeline:
         self.exporter = exporter or DefaultExportRenderer()
 
     def run(self, resume: str, job_description: str) -> TailoringResult:
-        requirements = self.analyzer.analyze(job_description)
-        matches, gaps = self.matcher.match(resume, requirements)
-        tailored_resume = self.rewriter.rewrite(resume, job_description)
+        monitor = PerformanceMonitor()
+        with monitor.measure("input_parsing"):
+            resume = ensure_text_input(resume, label="Resume").strip()
+            job_description = ensure_text_input(job_description, label="Job description").strip()
+        with monitor.measure("analysis"):
+            requirements = self.analyzer.analyze(job_description)
+        with monitor.measure("matching"):
+            matches, gaps = self.matcher.match(resume, requirements)
+        with monitor.measure("provider"):
+            tailored_resume = self.rewriter.rewrite(resume, job_description)
         formatted_resume = self.formatter.format(tailored_resume)
-        validation = self.validator.validate(resume, formatted_resume)
+        with monitor.measure("validation"):
+            validation = self.validator.validate(resume, formatted_resume)
+        with monitor.measure("export"):
+            exports = self.exporter.export(formatted_resume) if not validation.export_blocked else tuple()
         return TailoringResult(
             tailored_resume=formatted_resume,
             job_requirements=requirements,
@@ -119,9 +131,8 @@ class DeterministicTailoringPipeline:
             gaps=gaps,
             validation=validation,
             diff=build_diff(resume, formatted_resume),
-            exports=self.exporter.export(formatted_resume)
-            if not validation.export_blocked
-            else tuple(),
+            exports=exports,
+            performance=monitor.report(),
         )
 
 

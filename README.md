@@ -278,6 +278,92 @@ Chunks 31-40 are implemented in focused milestones:
 - API errors use safe categories and do not echo private provider or document
 	details.
 - Correlation IDs and allowlisted telemetry provide operational diagnostics
+
+## Chunks 41-44 Implementation
+
+### Local setup and checks
+
+Backend setup uses Python 3.11 or newer:
+
+```bash
+python -m pip install -e ".[test]"
+python -m unittest discover -s tests -v
+python -m app.gates
+uvicorn app.main:app --reload
+```
+
+Frontend setup uses Node.js and the checked-in npm lockfile:
+
+```bash
+cd frontend
+npm ci
+npm run typecheck
+npm run build
+npm run dev
+```
+
+The frontend lint command is `npm run lint`. The current Next.js workflow
+keeps resume and job-description text in component memory only. It announces
+loading and failure states to assistive technology, labels diff additions and
+removals in text, and keeps validation warnings and blocked exports visible
+without relying on color alone.
+
+### Configuration and API contract
+
+Safe development values are:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `JIRO_DEFAULT_PROVIDER` | `groq` | `groq`, `byok`, or `local` |
+| `JIRO_GROQ_MODEL` | `openai/gpt-oss-120b` | Shared-provider model name |
+| `JIRO_OLLAMA_ENDPOINT` | `http://localhost:11434` | Local provider endpoint |
+| `JIRO_PROVIDER_TIMEOUT_SECONDS` | `30` | Positive timeout, capped at 120 seconds |
+| `JIRO_CORS_ORIGINS` | localhost frontend origins | Comma-separated allowlist |
+| `JIRO_API_TOKEN` | unset | Optional server-side bearer token |
+| `GROQ_API_KEY` | unset | Server-side shared Groq credential |
+| `NEXT_PUBLIC_API_BASE_URL` | `http://127.0.0.1:8000` | Frontend API origin |
+
+Never put API keys in `.env` files committed to the repository or in
+`NEXT_PUBLIC_*` variables. `POST /tailor` accepts `resume`,
+`job_description`, `provider`, optional `model`, and `privacy_mode: "ephemeral"`.
+It returns matches, gaps, validation warnings, a diff, export metadata,
+workflow state, and content-free performance metrics. `POST /ingest/text` and
+`POST /ingest/file` return normalized text for the current in-memory workflow.
+`GET /health` and `GET /ready` expose operational status without source text or
+credentials.
+
+### Deployment and troubleshooting
+
+Deploy the API and Next.js frontend separately behind HTTPS. Inject secrets
+through the deployment platform, set restrictive CORS origins, configure a
+bounded worker count and request limit, and keep `/health` public only when
+that matches the deployment policy. Do not mount persistent upload storage:
+ephemeral mode intentionally retains documents only during the request and
+review interaction.
+
+- Parser errors: verify UTF-8 TXT input and supported PDF/DOCX files under 5 MB.
+- Provider errors: verify the selected provider, model, endpoint, timeout, and
+	server-side credential; JIRO never silently falls back to another provider.
+- Validation failure: review unsupported claims; export remains blocked until
+	the result is source-supported.
+- Export failure: inspect the format's returned reason and retain the validated
+	Markdown output; no incomplete binary is presented as ready.
+
+### Release report
+
+Completed through Chunk 44: deterministic ingestion, matching, validation,
+provider isolation, performance metrics, accessible review states, explicit
+configuration documentation, and release-gate evidence. DOCX/PDF export is
+implemented when its optional dependencies are installed; Markdown remains the
+portable fallback. History, accounts, persistent storage, and live-provider
+integration tests remain intentionally deferred.
+
+Required release commands are the backend unittest suite, `python -m app.gates`,
+frontend `npm run typecheck`, `npm run lint`, and `npm run build`. Acceptance
+tests use fake providers and no live credentials. A release is not complete
+until all commands pass in an environment with the dependencies installed;
+the current development interpreter must install `pytest`/project extras and
+`python-docx` before running the full suite.
 	without sensitive content.
 - Provider quotas return deterministic retry-after behavior.
 - Optional bearer authentication protects API routes without changing the

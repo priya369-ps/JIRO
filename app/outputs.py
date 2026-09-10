@@ -5,6 +5,8 @@ from difflib import unified_diff
 import re
 from typing import Final
 
+from app.performance import PerformanceMetrics
+
 
 _TOKEN_PATTERN: Final = re.compile(r"[A-Za-z][A-Za-z0-9+#./-]{1,}")
 _STOP_WORDS: Final = frozenset(
@@ -98,6 +100,7 @@ class TailoringResult:
     validation: ValidationResult
     diff: DiffResult
     exports: tuple[ExportResult, ...]
+    performance: PerformanceMetrics | None = None
 
     def as_dict(self) -> dict[str, object]:
         """Serialize the immutable domain result for the API response."""
